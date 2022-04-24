@@ -55,7 +55,7 @@ class RandomPlayer(Player):
         board.push(selected_move)
 
 class NeuralNetworkPlayer(Player):
-    def __init__(self) -> None:
+    def __init__(self, checkpoint_name = 'test_checkpt_4') -> None:
         super().__init__()
 
         print("loading tf model...")
@@ -79,7 +79,7 @@ class NeuralNetworkPlayer(Player):
             metrics = [ 'accuracy' ]
         )
 
-        self.model.load_weights('checkpoints/test_checkpt_3')
+        self.model.load_weights('checkpoints/' + checkpoint_name)
 
     def get_name(self) -> str:
         return "tensorflow"
@@ -170,7 +170,7 @@ class NeuralNetworkPlayer(Player):
         return np.array([K, Q, R, B, N, P, k, q, r, b, n, p]).flatten()
 
 class ChessGame:
-    def __init__(self, white : Player = None, black : Player = None, fen = None) -> None:
+    def __init__(self, white : Player = None, black : Player = None, fen = None, start_perspective = chess.WHITE) -> None:
         if fen != None:
             self.board = chess.Board(fen = fen)
         else:
@@ -198,7 +198,7 @@ class ChessGame:
         self.mouse_click_y = 0
 
         # change this variable to change the perspective
-        self.perspective = chess.WHITE
+        self.perspective = start_perspective
 
         # variables for the ui with chess moving
         self.selection_mask = [0] * 64
@@ -561,7 +561,7 @@ def main():
     # '8/8/8/4p1K1/2k1P3/8/8/8'
     # 'r7/8/3k4/8/8/4K3/8/5QRR'
     # '3k2R1/7R/8/8/8/4K3/1r6/r4Q2'
-    game = ChessGame(white = NeuralNetworkPlayer(), black = None, fen = None)
+    game = ChessGame(white = NeuralNetworkPlayer(checkpoint_name='test_checkpt_4'), black = None, fen = None, start_perspective=chess.BLACK)
     game.run()
 
 if __name__ == "__main__":
