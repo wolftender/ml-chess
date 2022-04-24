@@ -55,13 +55,13 @@ class RandomPlayer(Player):
         board.push(selected_move)
 
 class NeuralNetworkPlayer(Player):
-    def __init__(self, checkpoint_name = 'test_checkpt_4') -> None:
+    def __init__(self, checkpoint_name = 'test_checkpt_5', add_depth = False) -> None:
         super().__init__()
 
         print("loading tf model...")
         vec_len = 768
 
-        self.add_depth = False
+        self.add_depth = add_depth
 
         self.model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(vec_len,)),
@@ -84,8 +84,7 @@ class NeuralNetworkPlayer(Player):
     def get_name(self) -> str:
         return "tensorflow"
 
-    def find_min(self, board : chess.Board, color):
-        worst_eval = 10000
+    def find_min_max(self, board : chess.Board):
         count_eval = 0
 
         batch = []
@@ -109,22 +108,18 @@ class NeuralNetworkPlayer(Player):
             count_eval = count_eval + 1
 
         pred_data = np.stack(batch, axis=0)
-        pred_y = self.model.predict_on_batch(pred_data)
+        pred_labels = self.model.predict_on_batch(pred_data)
 
-        min_eval = pred_y.min()
-        max_eval = pred_y.max()
+        min_eval = pred_labels.min()
+        max_eval = pred_labels.max()
 
-        if color == chess.BLACK:
-            worst_eval = -max_eval
-        else:
-            worst_eval = min_eval
-
-        return (worst_eval, count_eval)
+        return (min_eval, max_eval, count_eval)
 
     def make_move(self, board : chess.Board):
         clone_board = board.copy()
 
-        best_eval = -10000
+        best_min_eval = -1000000
+        best_max_eval = -1000000
         best_move = None
         evaluated_moves = 0
 
@@ -132,16 +127,29 @@ class NeuralNetworkPlayer(Player):
 
         for move in board.legal_moves:
             clone_board.push(move)
-            min_eval, count_eval = self.find_min(clone_board, board.turn)
+            min_eval, max_eval, count_eval = self.find_min_max(clone_board)
 
-            if min_eval > best_eval:
-                best_eval = min_eval
+            if board.turn == chess.BLACK:
+                tmp = min_eval
+                min_eval = -max_eval
+                max_eval = -tmp
+
+            print("move gen min=", min_eval, "max=", max_eval)
+
+            if min_eval > best_min_eval:
+                best_min_eval = min_eval
+                best_max_eval = max_eval
                 best_move = move
+            elif abs(min_eval - best_min_eval) < 0.001:
+                if max_eval > best_max_eval:
+                    best_min_eval = min_eval
+                    best_max_eval = max_eval
+                    best_move = move
 
             evaluated_moves = evaluated_moves + count_eval
             clone_board.pop()
 
-        print("evaluated", evaluated_moves, "moves")
+        print("evaluated", evaluated_moves, "moves, chose move min=", best_min_eval, "max=", best_max_eval)
         try:
             board.push(best_move)
         except:
@@ -561,7 +569,7 @@ def main():
     # '8/8/8/4p1K1/2k1P3/8/8/8'
     # 'r7/8/3k4/8/8/4K3/8/5QRR'
     # '3k2R1/7R/8/8/8/4K3/1r6/r4Q2'
-    game = ChessGame(white = NeuralNetworkPlayer(checkpoint_name='test_checkpt_4'), black = None, fen = None, start_perspective=chess.BLACK)
+    game = ChessGame(white = RandomPlayer(), black = NeuralNetworkPlayer(), fen = None, start_perspective=chess.BLACK)
     game.run()
 
 if __name__ == "__main__":
