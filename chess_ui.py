@@ -55,7 +55,7 @@ class RandomPlayer(Player):
         board.push(selected_move)
 
 class NeuralNetworkPlayer(Player):
-    def __init__(self, checkpoint_name = 'weights_v1.h5', add_depth = False) -> None:
+    def __init__(self, checkpoint_name = 't2/checkpoint.ckpt', add_depth = False) -> None:
         super().__init__()
 
         print("loading tf model...")
@@ -104,7 +104,10 @@ class NeuralNetworkPlayer(Player):
         min_eval = pred_labels.min()
         max_eval = pred_labels.max()
 
-        return (-max_eval, -min_eval, count_eval)
+        if board.turn == chess.WHITE:
+            return (-max_eval, -min_eval, count_eval)
+        else:
+            return (min_eval, max_eval, count_eval)
 
     def make_move(self, board : chess.Board):
         clone_board = board.copy()
@@ -583,7 +586,7 @@ def main():
     # '8/8/8/4p1K1/2k1P3/8/8/8'
     # 'r7/8/3k4/8/8/4K3/8/5QRR'
     # '3k2R1/7R/8/8/8/4K3/1r6/r4Q2'
-    game = ChessGame(white = None, black = NeuralNetworkPlayer(), fen = None, start_perspective=chess.BLACK)
+    game = ChessGame(white = NeuralNetworkPlayer(), black = None, fen = None, start_perspective=chess.BLACK)
     game.run()
 
 if __name__ == "__main__":
