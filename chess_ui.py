@@ -55,13 +55,11 @@ class RandomPlayer(Player):
         board.push(selected_move)
 
 class NeuralNetworkPlayer(Player):
-    def __init__(self, checkpoint_name = 'test_checkpt_5', add_depth = False) -> None:
+    def __init__(self, checkpoint_name = 'weights_v1.h5', add_depth = False) -> None:
         super().__init__()
 
         print("loading tf model...")
-        vec_len = 768
-
-        self.add_depth = add_depth
+        vec_len = 774
 
         self.model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(vec_len,)),
@@ -79,15 +77,15 @@ class NeuralNetworkPlayer(Player):
             metrics = [ 'accuracy' ]
         )
 
-        self.model.load_weights('checkpoints/' + checkpoint_name)
+        self.model.load_weights('checkpoints/model_v2/' + checkpoint_name)
 
     def get_name(self) -> str:
         return "tensorflow"
 
     def find_min_max(self, board : chess.Board):
         count_eval = 0
-
         batch = []
+
         encoded = self.encode_board(board)
         batch.append(encoded)
 
@@ -96,24 +94,17 @@ class NeuralNetworkPlayer(Player):
             encoded = self.encode_board(board)
             batch.append(encoded)
 
-            if self.add_depth:
-                for next_move in board.legal_moves:
-                    board.push(next_move)
-                    encoded = self.encode_board(board)
-                    batch.append(encoded)
-                    board.pop()
-                    count_eval = count_eval + 1
-
             board.pop()
             count_eval = count_eval + 1
 
         pred_data = np.stack(batch, axis=0)
         pred_labels = self.model.predict_on_batch(pred_data)
 
+        batch[0] = -batch[0]
         min_eval = pred_labels.min()
         max_eval = pred_labels.max()
 
-        return (min_eval, max_eval, count_eval)
+        return (-max_eval, -min_eval, count_eval)
 
     def make_move(self, board : chess.Board):
         clone_board = board.copy()
@@ -128,11 +119,6 @@ class NeuralNetworkPlayer(Player):
         for move in board.legal_moves:
             clone_board.push(move)
             min_eval, max_eval, count_eval = self.find_min_max(clone_board)
-
-            if board.turn == chess.BLACK:
-                tmp = min_eval
-                min_eval = -max_eval
-                max_eval = -tmp
 
             print("move gen min=", min_eval, "max=", max_eval)
 
@@ -161,6 +147,8 @@ class NeuralNetworkPlayer(Player):
         return serialized
 
     def encode_board(self, board : chess.Board):
+        # this function gets SquareSet for given figure type
+        # square set is a 64-bit integer (a bitboard)
         K = self.bitboard_to_vector(int(board.pieces(chess.KING, chess.WHITE)))
         Q = self.bitboard_to_vector(int(board.pieces(chess.QUEEN, chess.WHITE)))
         R = self.bitboard_to_vector(int(board.pieces(chess.ROOK, chess.WHITE)))
@@ -175,7 +163,33 @@ class NeuralNetworkPlayer(Player):
         n = self.bitboard_to_vector(int(board.pieces(chess.KNIGHT, chess.BLACK)))
         p = self.bitboard_to_vector(int(board.pieces(chess.PAWN, chess.BLACK)))
 
-        return np.array([K, Q, R, B, N, P, k, q, r, b, n, p]).flatten()
+        isblack = 0
+        iswhite = 0
+
+        white_king_castl = 0
+        white_queen_castl = 0
+        black_king_castl = 0
+        black_queen_castl = 0
+
+        if board.has_kingside_castling_rights(chess.WHITE):
+            white_king_castl = 1
+
+        if board.has_queenside_castling_rights(chess.WHITE):
+            white_queen_castl = 1
+
+        if board.has_kingside_castling_rights(chess.BLACK):
+            black_king_castl = 1
+
+        if board.has_queenside_castling_rights(chess.BLACK):
+            black_queen_castl = 1
+
+        if board.turn == chess.WHITE:
+            iswhite = 1
+        elif board.turn == chess.BLACK:
+            isblack = 1
+
+        meta = np.array([isblack, iswhite, white_king_castl, white_queen_castl, black_king_castl, black_queen_castl])
+        return np.concatenate([K, Q, R, B, N, P, k, q, r, b, n, p, meta], axis=0)
 
 class ChessGame:
     def __init__(self, white : Player = None, black : Player = None, fen = None, start_perspective = chess.WHITE) -> None:
@@ -569,7 +583,7 @@ def main():
     # '8/8/8/4p1K1/2k1P3/8/8/8'
     # 'r7/8/3k4/8/8/4K3/8/5QRR'
     # '3k2R1/7R/8/8/8/4K3/1r6/r4Q2'
-    game = ChessGame(white = RandomPlayer(), black = NeuralNetworkPlayer(), fen = None, start_perspective=chess.BLACK)
+    game = ChessGame(white = None, black = NeuralNetworkPlayer(), fen = None, start_perspective=chess.BLACK)
     game.run()
 
 if __name__ == "__main__":
