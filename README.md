@@ -13,3 +13,9 @@ fillowing libraries should be installed:
 the model should be trained on chess database with evaluations
 
 jupyter notebook not yet included
+
+## attributions
+following external assets and resources were used in this project:
+
+* https://www.freefonts.io/salma-pro-font/
+* https://commons.wikimedia.org/wiki/File:Chess_Pieces_Sprite.svg
