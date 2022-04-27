@@ -82,15 +82,34 @@ class NeuralNetworkPlayer(Player):
     def get_name(self) -> str:
         return "tensorflow"
 
-    def find_min_max(self, board : chess.Board):
+    def find_min_max(self, board : chess.Board, color):
         count_eval = 0
         batch = []
 
         encoded = self.encode_board(board)
-        batch.append(encoded)
 
+        outcome = board.outcome()
+        if outcome != None:
+            if outcome.winner == color:
+                return (9999, 9999, 0)
+            elif outcome.winner == (not color):
+                return (-9999, -9999, 0)
+            else:
+                return (0, 0, 0)
+
+        checkmate_in_two = False
         for move in board.legal_moves:
             board.push(move)
+
+            # check for obvious
+            outcome = board.outcome()
+            if outcome != None:
+                if outcome.winner == (not color):
+                    board.pop()
+                    return (-9999, -9999, 0)
+                elif outcome.winner == color:
+                    checkmate_in_two = True
+
             encoded = self.encode_board(board)
             batch.append(encoded)
 
@@ -100,14 +119,18 @@ class NeuralNetworkPlayer(Player):
         pred_data = np.stack(batch, axis=0)
         pred_labels = self.model.predict_on_batch(pred_data)
 
-        batch[0] = -batch[0]
         min_eval = pred_labels.min()
         max_eval = pred_labels.max()
 
-        if board.turn == chess.WHITE:
-            return (-max_eval, -min_eval, count_eval)
-        else:
+        if color == chess.BLACK:
+            tmp = min_eval
+            min_eval = -max_eval
+            max_eval = -tmp
+        
+        if not checkmate_in_two:
             return (min_eval, max_eval, count_eval)
+        else:
+            return (min_eval, 9999, count_eval)
 
     def make_move(self, board : chess.Board):
         clone_board = board.copy()
@@ -121,7 +144,7 @@ class NeuralNetworkPlayer(Player):
 
         for move in board.legal_moves:
             clone_board.push(move)
-            min_eval, max_eval, count_eval = self.find_min_max(clone_board)
+            min_eval, max_eval, count_eval = self.find_min_max(clone_board, board.turn)
 
             print("move gen min=", min_eval, "max=", max_eval)
 
@@ -586,7 +609,8 @@ def main():
     # '8/8/8/4p1K1/2k1P3/8/8/8'
     # 'r7/8/3k4/8/8/4K3/8/5QRR'
     # '3k2R1/7R/8/8/8/4K3/1r6/r4Q2'
-    game = ChessGame(white = NeuralNetworkPlayer(), black = None, fen = None, start_perspective=chess.BLACK)
+    game = ChessGame(white = NeuralNetworkPlayer(checkpoint_name='t3/checkpoint.ckpt'), black = None, fen = None, start_perspective=chess.BLACK)
+    #game = ChessGame(white = NeuralNetworkPlayer(checkpoint_name='t3/checkpoint.ckpt'))
     game.run()
 
 if __name__ == "__main__":
