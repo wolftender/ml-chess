@@ -337,8 +337,8 @@ class ChessGame:
         # load the ui font
         self.font = TTF_OpenFont(b"./font.ttf", 20)
 
-        w = ctypes.pointer(ctypes.c_long(0))
-        h = ctypes.pointer(ctypes.c_long(0))
+        w = ctypes.pointer(ctypes.c_int(0))
+        h = ctypes.pointer(ctypes.c_int(0))
         SDL_QueryTexture(self.piece_sprites, None, None, w, h)
 
         self.piece_sprite_width = math.floor(w.contents.value / 6)
