@@ -226,14 +226,23 @@ class ChessGame:
 
         print(self.board)
 
+        self.scale = 1.5
+
         # dimensions for the window
-        self.window_width = 720
-        self.window_height = 520
+        self.window_width = math.floor(720 * self.scale)
+        self.window_height = math.floor(520 * self.scale)
 
         # dimensions for the chessboard
-        self.chessboard_dim = 480
-        self.chessboard_x = 20
-        self.chessboard_y = 20
+        self.chessboard_dim = math.floor(480 * self.scale)
+        self.chessboard_x = math.floor(20 * self.scale)
+        self.chessboard_y = math.floor(20 * self.scale)
+
+        self.profile_padding = math.floor(10 * self.scale)
+        self.opponent_profile_y = math.floor(10 * self.scale)
+        self.player_profile_y = math.floor(340 * self.scale)
+        self.profile_piece_padding = math.floor(35 * self.scale)
+        self.profile_piece_size = math.floor(90 * self.scale)
+
 
         self.running = False
         self.piece_sprites = None
@@ -335,7 +344,7 @@ class ChessGame:
         self.piece_sprites = IMG_LoadTexture(self.renderer, b"./pieces.png")
 
         # load the ui font
-        self.font = TTF_OpenFont(b"./font.ttf", 20)
+        self.font = TTF_OpenFont(b"./font.ttf", math.floor(20 * self.scale))
 
         w = ctypes.pointer(ctypes.c_int(0))
         h = ctypes.pointer(ctypes.c_int(0))
@@ -569,40 +578,47 @@ class ChessGame:
             white_name = self.white_player.get_name()
 
         if self.perspective == chess.WHITE:
-            self.draw_player_profile(self.window_height + 10, 10, black_name, chess.BLACK)
-            self.draw_player_profile(self.window_height + 10, 340, white_name + " (you)", chess.WHITE)
+            self.draw_player_profile(self.window_height + self.profile_padding, self.opponent_profile_y, black_name, chess.BLACK)
+            self.draw_player_profile(self.window_height + self.profile_padding, self.player_profile_y, white_name + " (you)", chess.WHITE)
         else:
-            self.draw_player_profile(self.window_height + 10, 10, white_name, chess.WHITE)
-            self.draw_player_profile(self.window_height + 10, 340, black_name + " (you)", chess.BLACK)
+            self.draw_player_profile(self.window_height + self.profile_padding, self.opponent_profile_y, white_name, chess.WHITE)
+            self.draw_player_profile(self.window_height + self.profile_padding, self.player_profile_y, black_name + " (you)", chess.BLACK)
 
         # draw game over message if game is over
         if not self.game_active:
-            tx = 520 + 90
-            ty = math.floor(self.window_height / 2) - 20
+            tx = math.floor(self.scale * (520 + 90))
+            ty = math.floor(self.window_height / 2) - math.floor(self.scale * 20)
 
             SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255)
-            SDL_RenderFillRect(self.renderer, SDL_Rect(tx - 80, ty - 40, 160, 100))
+            SDL_RenderFillRect(self.renderer, SDL_Rect(
+                tx - math.floor(self.scale * 80), ty - math.floor(self.scale * 40), 
+                math.floor(self.scale * 160), math.floor(self.scale * 100)))
 
             self.render_text(tx, ty, self.font, self.game_message.encode(), SDL_Color(255, 0, 0), True)
 
     def draw_player_profile(self, x, y, name, color):
-        self.draw_piece(x + 35, y, 90, 90, chess.Piece(chess.KING, color))
-        self.render_text(x + 80, y + 100, self.font, name.encode(), SDL_Color(), True)
+        self.draw_piece(x + self.profile_piece_padding, y, self.profile_piece_size, self.profile_piece_size, chess.Piece(chess.KING, color))
+        self.render_text(x + math.floor(80 * self.scale), y + self.profile_piece_size + self.profile_padding, self.font, name.encode(), SDL_Color(), True)
         
         # render material for this player
         material = self.white_material
         if color == chess.BLACK: 
             material = self.black_material
 
+        start_x = math.floor(self.scale * 20)
+        start_y = math.floor(self.scale * 125)
+        icon_size = math.floor(self.scale * 25)
+        icon_spacing = math.floor(self.scale * 15)
+
         index = 0
         for piece_type in material:
             for i in range(0, material[piece_type]):
                 dx = index % 8
                 dy = math.floor(index / 8)
-                spr_x = x + 20 + dx * 15
-                spr_y = y + 125 + dy * 15
+                spr_x = x + start_x + dx * icon_spacing
+                spr_y = y + start_y + dy * icon_spacing
 
-                self.draw_piece(spr_x, spr_y, 25, 25, chess.Piece(piece_type, not color))
+                self.draw_piece(spr_x, spr_y, icon_size, icon_size, chess.Piece(piece_type, not color))
                 index = index + 1
 
 def main():
