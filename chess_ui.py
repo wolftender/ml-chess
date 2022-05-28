@@ -55,29 +55,11 @@ class RandomPlayer(Player):
         board.push(selected_move)
 
 class NeuralNetworkPlayer(Player):
-    def __init__(self, checkpoint_name = 't2/checkpoint.ckpt', add_depth = False) -> None:
+    def __init__(self, model_name = 'checkpoints/model_v4/checkpoint_3.ckpt', add_depth = False) -> None:
         super().__init__()
-
         print("loading tf model...")
-        vec_len = 774
 
-        self.model = tf.keras.Sequential([
-            tf.keras.layers.Input(shape=(vec_len,)),
-            tf.keras.layers.Dense(vec_len, activation='relu'),
-            tf.keras.layers.Dense(vec_len, activation='relu'),
-            tf.keras.layers.Dense(vec_len, activation='relu'),
-            tf.keras.layers.Dense(vec_len, activation='relu'),
-            tf.keras.layers.Dense(vec_len, activation='relu'),
-            tf.keras.layers.Dense(1)
-        ])
-
-        self.model.compile(
-            optimizer = 'adam',
-            loss = tf.keras.losses.MeanSquaredError(),
-            metrics = [ 'accuracy' ]
-        )
-
-        self.model.load_weights('checkpoints/model_v2/' + checkpoint_name)
+        self.model = tf.keras.models.load_model(model_name)
 
     def get_name(self) -> str:
         return "tensorflow"
@@ -625,7 +607,7 @@ def main():
     # '8/8/8/4p1K1/2k1P3/8/8/8'
     # 'r7/8/3k4/8/8/4K3/8/5QRR'
     # '3k2R1/7R/8/8/8/4K3/1r6/r4Q2'
-    game = ChessGame(white = NeuralNetworkPlayer(checkpoint_name='t3/checkpoint.ckpt'), black = None, fen = None, start_perspective=chess.BLACK)
+    game = ChessGame(white = NeuralNetworkPlayer(), black = None, fen = None, start_perspective=chess.BLACK)
     #game = ChessGame(white = NeuralNetworkPlayer(checkpoint_name='t3/checkpoint.ckpt'))
     game.run()
 
